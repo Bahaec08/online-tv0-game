@@ -8,13 +8,34 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="landing-page" id="landingPage">
-        <h1>T·V·0 ONLINE 🎮</h1>
-        <div class="badge-row">
-            <div class="badge"><span class="tt">T</span> = correct + right place</div>
-            <div class="badge"><span class="vv">V</span> = correct · wrong place</div>
-            <div class="badge"><span class="z0">0</span> = nothing correct</div>
+    <!-- Home Page -->
+    <div class="home-page" id="homePage">
+        <h1>T·V·0 🎮</h1>
+        <div class="home-buttons">
+            <button id="howToPlayBtn" class="home-btn primary-btn">📖 How to Play</button>
+            <button id="playComputerBtn" class="home-btn primary-btn">🤖 Play vs Computer</button>
+            <button id="playOnlineBtn" class="home-btn primary-btn">🌐 Play Online</button>
         </div>
+    </div>
+
+    <!-- Instructions Modal -->
+    <div id="instructionsModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h2>How to Play T·V·0</h2>
+            <p>Guess the opponent's secret 3-digit number. The number has <strong>no leading zero</strong> and <strong>all digits are unique</strong>.</p>
+            <div class="badge-row modal-badges">
+                <div class="badge"><span class="tt">T</span> = right digit, right place</div>
+                <div class="badge"><span class="vv">V</span> = right digit, wrong place</div>
+                <div class="badge"><span class="z0">0</span> = none of the digits are correct</div>
+            </div>
+            <p>Use the digit eliminator to keep track of digits you know are not in the secret.</p>
+            <button id="closeInstructionsBtn" class="close-btn">Got it! 👍</button>
+        </div>
+    </div>
+
+    <div class="landing-page" id="landingPage" style="display: none;">
+        <button id="backToHomeBtn" class="back-btn">← Back to Home</button>
+        <h1>T·V·0 ONLINE 🌐</h1>
         
         <div class="landing-buttons">
             <input type="text" id="usernameInput" class="username-input" placeholder="Enter your username" maxlength="15">
@@ -33,6 +54,7 @@
         <div class="game-wrapper">
             <div class="game-container">
                 <div class="game-header">
+                    <button id="quitGameBtn" class="quit-btn" title="Quit to Home">🚪</button>
                     <div class="scoreboard-title">T·V·0</div>
                     <div class="room-info" id="roomInfo"></div>
                     <div class="scoreboard" id="scoreboard">
@@ -84,7 +106,7 @@
                             <h2>🎯 My guesses</h2>
                             <div class="history-list" id="myGuesses"></div>
                         </div>
-                        <div class="panel">
+                        <div class="panel" id="opponentGuessesPanel">
                             <h2>👤 Opponent's guesses</h2>
                             <div class="history-list" id="opponentGuesses"></div>
                         </div>
