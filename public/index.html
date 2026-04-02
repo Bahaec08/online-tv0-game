@@ -5,11 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Taureau Vache</title>
     <link rel="icon" href="./images/logo.png" type="image/x-icon">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <!-- Home Page -->
-    <div class="home-page" id="homePage">
+    <div class="home-page glass-panel" id="homePage">
         <h1>T·V·0 🎮</h1>
         <div class="home-buttons">
             <button id="howToPlayBtn" class="home-btn primary-btn">📖 How to Play</button>
@@ -33,122 +34,6 @@
         </div>
     </div>
 
-    <div class="landing-page" id="landingPage" style="display: none;">
-        <button id="backToHomeBtn" class="back-btn">← Back to Home</button>
-        <h1>T·V·0 ONLINE 🌐</h1>
-        
-        <div class="landing-buttons">
-            <input type="text" id="usernameInput" class="username-input" placeholder="Enter your username" maxlength="15">
-            <button id="createRoomBtn">Create New Game 🎲</button>
-            <div class="or-divider">OR</div>
-            <div class="join-section">
-                <input type="text" id="roomCodeInput" placeholder="Enter room code" maxlength="6">
-                <button id="joinRoomBtn">Join Game 🔑</button>
-            </div>
-        </div>
-        
-        <div id="landingError" class="error-message"></div>
-    </div>
-
-    <div class="game-page" id="gamePage" style="display: none;">
-        <div class="game-wrapper">
-            <div class="game-container">
-                <div class="game-header">
-                    <button id="quitGameBtn" class="quit-btn" title="Quit to Home">🚪</button>
-                    <div class="scoreboard-title">T·V·0</div>
-                    <div class="room-info" id="roomInfo"></div>
-                    <div class="scoreboard" id="scoreboard">
-                        <div class="player-container" id="p1Container">
-                            <img id="player1Avatar" class="avatar" src="" style="display: none;" />
-                            <span id="player1Name" class="player-name">Player 1</span> (<span id="player1Score">0</span>)
-                            <div id="player1Thinking" class="thinking-emote" style="display:none;">💬</div>
-                        </div>
-                        <span class="score-divider">-</span>
-                        <div class="player-container" id="p2Container">
-                            <span id="player2Name" class="player-name">Player 2</span> (<span id="player2Score">0</span>)
-                            <img id="player2Avatar" class="avatar" src="" style="display: none; margin-left: 5px; margin-right: 0;" />
-                            <div id="player2Thinking" class="thinking-emote" style="display:none;">💬</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Secret Banner -->
-                <div class="secret-banner" id="secretBanner" style="display: none;">
-                    <div class="secret-label">🤫 Your secret:</div>
-                    <div class="secret-number" id="mySecretDisplay">———</div>
-                </div>
-
-                <div class="badge-row">
-                    <div class="badge"><span class="tt">T</span> = right place</div>
-                    <div class="badge"><span class="vv">V</span> = wrong place</div>
-                    <div class="badge"><span class="z0">0</span> = none correct</div>
-                </div>
-
-                <div id="secretSetup" class="secret-setup">
-                    <h3>🔐 Set your secret number</h3>
-                    <p>(3 digits, no leading zero, all unique)</p>
-                    <div class="input-area">
-                        <input type="text" id="secretInput" class="secret-input" placeholder="123" maxlength="3">
-                        <button id="setSecretBtn">set</button>
-                    </div>
-                    <div id="secretError" class="error-message"></div>
-                </div>
-
-                <div id="gameArea" style="display: none; height: 100%; display: flex; flex-direction: column;">
-                    <div class="turn-indicator" id="turnIndicator">Waiting for game to start...</div>
-                    
-                    <div class="timer-wrapper" id="timerWrapper" style="display: none;">
-                        <div class="timer-bar" id="timerBar"></div>
-                    </div>
-
-                    <div class="history-row">
-                        <div class="panel">
-                            <h2>🎯 My guesses</h2>
-                            <div class="history-list" id="myGuesses"></div>
-                        </div>
-                        <div class="panel" id="opponentGuessesPanel">
-                            <h2>👤 Opponent's guesses</h2>
-                            <div class="history-list" id="opponentGuesses"></div>
-                        </div>
-                    </div>
-
-                    <!-- Guess Area -->
-                    <div class="guess-section">
-                        <div class="turn-message" id="turnMessage"></div>
-                        <div class="input-area" id="guessInputArea">
-                            <input type="text" id="guessInput" class="guess-input" placeholder="123" maxlength="3" disabled>
-                            <button id="guessBtn" disabled>guess</button>
-                        </div>
-                        <div id="nextRoundArea" style="display: none; text-align: center;">
-                            <button id="nextRoundBtn">Next Round ⏭️</button>
-                        </div>
-                    </div>
-
-                    <div id="gameError" class="error-message"></div>
-                </div>
-            </div>
-
-            <div class="eliminator-panel">
-                <h3>❌ digit eliminator</h3>
-                <p>click digits NOT in opponent's secret</p>
-                <div class="digit-grid" id="digitGrid"></div>
-                <div class="eliminator-status">
-                    <span id="eliminatedCount">0</span> digits eliminated
-                </div>
-                <button id="resetEliminatorBtn">reset</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="winnerOverlay" class="winner-overlay" style="display: none;">
-        <div class="winner-content">
-            <h1 id="winnerText">Player Wins! 🏆</h1>
-            <p>First to reach 5 points</p>
-            <button id="playAgainBtn">Play Again</button>
-        </div>
-    </div>
-
-    <script src="/socket.io/socket.io.js"></script>
-    <script src="game.js"></script>
+    <script src="home.js"></script>
 </body>
 </html>

@@ -1,5 +1,9 @@
 const socket = io();
 
+// Get game mode from URL parameter
+const urlParams = new URLSearchParams(window.location.search);
+const gameMode = urlParams.get('mode') || 'online'; // default to online
+
 // State
 let currentRoom = null;
 let playerNumber = null;
@@ -9,17 +13,9 @@ let eliminatedDigits = new Array(10).fill(false);
 let username = sessionStorage.getItem('tv0_username') || '';
 
 // Single Player State
-let isSinglePlayer = false;
+let isSinglePlayer = gameMode === 'computer';
 let computerSecret = null;
 let singlePlayerAttempts = 0;
-
-// DOM Elements - Home
-const homePage = document.getElementById('homePage');
-const howToPlayBtn = document.getElementById('howToPlayBtn');
-const playComputerBtn = document.getElementById('playComputerBtn');
-const playOnlineBtn = document.getElementById('playOnlineBtn');
-const instructionsModal = document.getElementById('instructionsModal');
-const closeInstructionsBtn = document.getElementById('closeInstructionsBtn');
 
 // DOM Elements - Landing
 const landingPage = document.getElementById('landingPage');
@@ -28,6 +24,7 @@ const createRoomBtn = document.getElementById('createRoomBtn');
 const joinRoomBtn = document.getElementById('joinRoomBtn');
 const roomCodeInput = document.getElementById('roomCodeInput');
 const usernameInput = document.getElementById('usernameInput');
+const timerSelect = document.getElementById('timerSelect');
 const landingError = document.getElementById('landingError');
 const backToHomeBtn = document.getElementById('backToHomeBtn');
 
@@ -38,14 +35,14 @@ const roomInfo = document.getElementById('roomInfo');
 const quitGameBtn = document.getElementById('quitGameBtn');
 
 // Avatars and Players
-const player1NameEl = document.getElementById('player1Name');
-const player2NameEl = document.getElementById('player2Name');
-const player1ScoreEl = document.getElementById('player1Score');
-const player2ScoreEl = document.getElementById('player2Score');
-const player1Avatar = document.getElementById('player1Avatar');
-const player2Avatar = document.getElementById('player2Avatar');
-const player1Thinking = document.getElementById('player1Thinking');
-const player2Thinking = document.getElementById('player2Thinking');
+const myNameEl = document.getElementById('myName');
+const opponentNameEl = document.getElementById('opponentName');
+const myScoreEl = document.getElementById('myScore');
+const opponentScoreEl = document.getElementById('opponentScore');
+const myAvatar = document.getElementById('myAvatar');
+const opponentAvatar = document.getElementById('opponentAvatar');
+const myThinking = document.getElementById('myThinking');
+const opponentThinking = document.getElementById('opponentThinking');
 
 const secretSetup = document.getElementById('secretSetup');
 const secretBanner = document.getElementById('secretBanner');
@@ -60,11 +57,17 @@ const turnIndicator = document.getElementById('turnIndicator');
 const timerWrapper = document.getElementById('timerWrapper');
 const timerBar = document.getElementById('timerBar');
 
+// Panel references for timer
+const myPanel = document.querySelector('.history-row .panel:first-child');
+const opponentPanel = document.getElementById('opponentGuessesPanel');
+
+// Current turn tracking
+let currentTurnIsMine = false;
+
 const myGuesses = document.getElementById('myGuesses');
 const opponentGuesses = document.getElementById('opponentGuesses');
 const guessInput = document.getElementById('guessInput');
 const guessBtn = document.getElementById('guessBtn');
-const turnMessage = document.getElementById('turnMessage');
 const gameError = document.getElementById('gameError');
 const guessInputArea = document.getElementById('guessInputArea');
 const nextRoundArea = document.getElementById('nextRoundArea');
@@ -141,6 +144,39 @@ function evaluateFeedbackLeftToRight(secret, guess) {
     return feedback.join('');
 }
 
+// Evaluate feedback locally
+function evaluateFeedbackLeftToRight(secret, guess) {
+    if (typeof secret !== 'string' || typeof guess !== 'string' || secret.length !== 3 || guess.length !== 3) return '';
+    const secretArr = secret.split('');
+    const guessArr = guess.split('');
+    
+    let usedInSecret = [false, false, false];
+    let feedback = [];
+    
+    for (let i = 0; i < 3; i++) {
+        if (guessArr[i] === secretArr[i]) {
+            feedback[i] = 'T';
+            usedInSecret[i] = true;
+        } else {
+            feedback[i] = null;
+        }
+    }
+    
+    for (let i = 0; i < 3; i++) {
+        if (feedback[i] !== null) continue;
+        let found = false;
+        for (let j = 0; j < 3; j++) {
+            if (!usedInSecret[j] && guessArr[i] === secretArr[j]) {
+                found = true;
+                usedInSecret[j] = true;
+                break;
+            }
+        }
+        feedback[i] = found ? 'V' : '';
+    }
+    return feedback.join('');
+}
+
 // Generate valid computer secret
 function generateComputerSecret() {
     let digits = [1, 2, 3, 4, 5, 6, 7, 8, 9];
@@ -156,60 +192,17 @@ function generateComputerSecret() {
     return secret;
 }
 
-// --- Home Page Navigation ---
-howToPlayBtn.addEventListener('click', () => {
-    instructionsModal.style.display = 'flex';
-});
-closeInstructionsBtn.addEventListener('click', () => {
-    instructionsModal.style.display = 'none';
-});
-playOnlineBtn.addEventListener('click', () => {
-    homePage.style.display = 'none';
-    landingPage.style.display = 'block';
-});
+// --- Navigation and Event Listeners ---
+
+// Navigation buttons
 backToHomeBtn.addEventListener('click', () => {
-    landingPage.style.display = 'none';
-    homePage.style.display = 'block';
+    window.location.href = 'index.html';
 });
-playComputerBtn.addEventListener('click', () => {
-    isSinglePlayer = true;
-    homePage.style.display = 'none';
-    gamePage.style.display = 'block';
-    
-    computerSecret = generateComputerSecret();
-    singlePlayerAttempts = 0;
-    
-    secretSetup.style.display = 'none';
-    secretBanner.style.display = 'none';
-    gameArea.style.display = 'flex';
-    timerWrapper.style.display = 'none';
-    turnIndicator.textContent = "Computer has chosen a secret number!";
-    turnMessage.textContent = 'Your turn to guess!';
-    
-    guessInputArea.style.display = 'flex';
-    nextRoundArea.style.display = 'none';
-    
-    guessInput.disabled = false;
-    guessBtn.disabled = false;
-    guessInput.focus();
-    
-    document.getElementById('opponentGuessesPanel').style.display = 'none';
-    player1NameEl.textContent = 'You';
-    player1ScoreEl.textContent = '0';
-    player1Avatar.src = getAvatarUrl('You');
-    player1Avatar.style.display = 'inline-block';
-    player1Avatar.classList.add('active-turn');
-    
-    player2NameEl.textContent = 'Computer';
-    player2ScoreEl.textContent = '-';
-    player2Avatar.src = getAvatarUrl('Robot');
-    player2Avatar.style.display = 'inline-block';
-});
+
 quitGameBtn.addEventListener('click', () => {
     sessionStorage.removeItem('tv0_room');
-    location.reload();
+    window.location.href = 'index.html';
 });
-// --- End Home Page Navigation ---
 
 // Create room
 createRoomBtn.addEventListener('click', () => {
@@ -218,8 +211,9 @@ createRoomBtn.addEventListener('click', () => {
         landingError.textContent = 'Please enter a username';
         return;
     }
+    const timerDuration = parseInt(timerSelect.value) || 15;
     sessionStorage.setItem('tv0_username', username);
-    socket.emit('createRoom', { username });
+    socket.emit('createRoom', { username, timerDuration });
 });
 
 // Join room
@@ -274,7 +268,7 @@ guessBtn.addEventListener('click', () => {
 
     if (isSinglePlayer) {
         singlePlayerAttempts++;
-        player1ScoreEl.textContent = singlePlayerAttempts;
+        myScoreEl.textContent = singlePlayerAttempts;
         
         const feedback = evaluateFeedbackLeftToRight(computerSecret, guess);
         addGuessToUI(guess, feedback, true);
@@ -286,7 +280,6 @@ guessBtn.addEventListener('click', () => {
             guessInput.disabled = true;
             guessBtn.disabled = true;
             turnIndicator.textContent = `You found the secret in ${singlePlayerAttempts} attempts! 🎉`;
-            turnMessage.textContent = '';
             
             winnerText.textContent = 'You Win! 🏆';
             document.querySelector('.winner-content p').textContent = `Guessed in ${singlePlayerAttempts} tries`;
@@ -299,7 +292,6 @@ guessBtn.addEventListener('click', () => {
     guessInput.value = '';
     guessInput.disabled = true;
     guessBtn.disabled = true;
-    turnMessage.textContent = 'Waiting for result...';
     socket.emit('typing', { roomCode: currentRoom, isTyping: false });
 });
 
@@ -410,18 +402,34 @@ function setupGameUI(roomCode, pNum) {
 }
 
 function updateScoreboard(usernames, scores) {
-    player1NameEl.textContent = usernames.player1 || 'Player 1';
-    player1ScoreEl.textContent = scores.player1 || 0;
-    if (usernames.player1) {
-        player1Avatar.src = getAvatarUrl(usernames.player1);
-        player1Avatar.style.display = 'inline-block';
-    }
+    if (playerNumber === 1 || isSinglePlayer) {
+        myNameEl.textContent = usernames.player1 || 'Player 1';
+        myScoreEl.textContent = scores.player1 || 0;
+        if (usernames.player1) {
+            myAvatar.src = getAvatarUrl(usernames.player1);
+            myAvatar.style.display = 'inline-block';
+        }
 
-    player2NameEl.textContent = usernames.player2 || 'Waiting...';
-    player2ScoreEl.textContent = scores.player2 || 0;
-    if (usernames.player2) {
-        player2Avatar.src = getAvatarUrl(usernames.player2);
-        player2Avatar.style.display = 'inline-block';
+        opponentNameEl.textContent = usernames.player2 || 'Waiting...';
+        opponentScoreEl.textContent = scores.player2 || 0;
+        if (usernames.player2) {
+            opponentAvatar.src = getAvatarUrl(usernames.player2);
+            opponentAvatar.style.display = 'inline-block';
+        }
+    } else {
+        myNameEl.textContent = usernames.player2 || 'Player 2';
+        myScoreEl.textContent = scores.player2 || 0;
+        if (usernames.player2) {
+            myAvatar.src = getAvatarUrl(usernames.player2);
+            myAvatar.style.display = 'inline-block';
+        }
+
+        opponentNameEl.textContent = usernames.player1 || 'Waiting...';
+        opponentScoreEl.textContent = scores.player1 || 0;
+        if (usernames.player1) {
+            opponentAvatar.src = getAvatarUrl(usernames.player1);
+            opponentAvatar.style.display = 'inline-block';
+        }
     }
 }
 
@@ -447,11 +455,31 @@ socket.on('gameStart', ({ turn, message }) => {
 });
 
 socket.on('timerStarted', ({ duration }) => {
-    timerWrapper.style.display = 'block';
-    timerBar.classList.remove('timer-active');
-    void timerBar.offsetWidth; // reset animation
-    timerBar.style.animationDuration = `${duration}s`;
-    timerBar.classList.add('timer-active');
+    // Hide old timer bar
+    timerWrapper.style.display = 'none';
+    
+    // Remove timer-active from both panels
+    myPanel.classList.remove('timer-active');
+    opponentPanel.classList.remove('timer-active');
+    
+    // Determine active panel
+    const activePanel = currentTurnIsMine ? myPanel : opponentPanel;
+    
+    // Reset animation
+    activePanel.classList.remove('timer-active');
+    void activePanel.offsetWidth;
+    
+    // Set duration for the panel
+    activePanel.style.animationDuration = `${duration}s`;
+    
+    // Set duration for the SVG rect inside the panel
+    const svgRect = activePanel.querySelector('.timer-svg rect');
+    if (svgRect) {
+        svgRect.style.animationDuration = `${duration}s`;
+    }
+    
+    // Add class to start animation
+    activePanel.classList.add('timer-active');
 });
 
 socket.on('guessResult', ({ guesser, guess, feedback, playerNumber: pNum }) => {
@@ -460,8 +488,8 @@ socket.on('guessResult', ({ guesser, guess, feedback, playerNumber: pNum }) => {
     if (!isMyGuess) {
         turnIndicator.textContent = `Opponent guessed ${guess} → ${feedback}`;
     }
-    player1Thinking.style.display = 'none';
-    player2Thinking.style.display = 'none';
+    myThinking.style.display = 'none';
+    opponentThinking.style.display = 'none';
 });
 
 function addGuessToUI(guess, feedback, isMyGuess) {
@@ -513,9 +541,16 @@ socket.on('gameWon', ({ winner, message, winnerName, scores }) => {
     gameStarted = false;
     guessInput.disabled = true;
     guessBtn.disabled = true;
-    player1ScoreEl.textContent = scores.player1;
-    player2ScoreEl.textContent = scores.player2;
+    if (playerNumber === 1) {
+        myScoreEl.textContent = scores.player1;
+        opponentScoreEl.textContent = scores.player2;
+    } else {
+        myScoreEl.textContent = scores.player2;
+        opponentScoreEl.textContent = scores.player1;
+    }
     timerWrapper.style.display = 'none';
+    myPanel.classList.remove('timer-active');
+    opponentPanel.classList.remove('timer-active');
 
     winnerText.textContent = `${winnerName} Wins! 🏆`;
     winnerOverlay.style.display = 'flex';
@@ -525,21 +560,26 @@ function endRound(message, scores) {
     gameStarted = false;
     guessInput.disabled = true;
     guessBtn.disabled = true;
-    player1ScoreEl.textContent = scores.player1;
-    player2ScoreEl.textContent = scores.player2;
+    if (playerNumber === 1) {
+        myScoreEl.textContent = scores.player1;
+        opponentScoreEl.textContent = scores.player2;
+    } else {
+        myScoreEl.textContent = scores.player2;
+        opponentScoreEl.textContent = scores.player1;
+    }
     turnIndicator.textContent = message;
     timerWrapper.style.display = 'none';
+    myPanel.classList.remove('timer-active');
+    opponentPanel.classList.remove('timer-active');
     guessInputArea.style.display = 'none';
     nextRoundArea.style.display = 'block';
 
-    player1Avatar.classList.remove('active-turn');
-    player2Avatar.classList.remove('active-turn');
+    myAvatar.classList.remove('active-turn');
+    opponentAvatar.classList.remove('active-turn');
 }
 
 socket.on('opponentTyping', ({ isTyping }) => {
-    const oppKey = playerNumber === 1 ? 'player2' : 'player1';
-    const thinkEmote = document.getElementById(`${oppKey}Thinking`);
-    if (thinkEmote) thinkEmote.style.display = isTyping ? 'block' : 'none';
+    if (opponentThinking) opponentThinking.style.display = isTyping ? 'block' : 'none';
 });
 
 socket.on('opponentDisconnected', () => {
@@ -565,28 +605,69 @@ socket.on('error', (message) => {
 
 function updateTurnUI(turn) {
     const isMyTurn = turn === `player${playerNumber}`;
+    currentTurnIsMine = isMyTurn;
     guessInput.disabled = !isMyTurn;
     guessBtn.disabled = !isMyTurn;
 
-    player1Avatar.classList.remove('active-turn');
-    player2Avatar.classList.remove('active-turn');
-    const activeAvatar = turn === 'player1' ? player1Avatar : player2Avatar;
-    activeAvatar.classList.add('active-turn');
+    myAvatar.classList.remove('active-turn');
+    opponentAvatar.classList.remove('active-turn');
+    const activeAvatar = isMyTurn ? myAvatar : opponentAvatar;
+    if (activeAvatar) activeAvatar.classList.add('active-turn');
 
     if (isMyTurn) {
-        turnMessage.textContent = 'Your turn to guess!';
         guessInput.focus();
     } else {
-        turnMessage.textContent = "Opponent's turn...";
         guessInput.value = '';
     }
 }
 
 // Check auto-rejoin
 const savedRoom = sessionStorage.getItem('tv0_room');
-if (username && savedRoom) {
+if (username && savedRoom && !isSinglePlayer) {
     socket.emit('rejoinRoom', { roomCode: savedRoom, username });
+}
+
+// Initialize based on game mode
+function initializePage() {
+    if (isSinglePlayer) {
+        // Initialize computer game
+        computerSecret = generateComputerSecret();
+        singlePlayerAttempts = 0;
+        
+        secretSetup.style.display = 'none';
+        secretBanner.style.display = 'none';
+        gameArea.style.display = 'flex';
+        timerWrapper.style.display = 'none';
+        turnIndicator.textContent = "Computer has chosen a secret number!";
+        
+        guessInputArea.style.display = 'flex';
+        nextRoundArea.style.display = 'none';
+        
+        guessInput.disabled = false;
+        guessBtn.disabled = false;
+        guessInput.focus();
+        
+        document.getElementById('opponentGuessesPanel').style.display = 'none';
+        myNameEl.textContent = 'You';
+        myScoreEl.textContent = '0';
+        myAvatar.src = getAvatarUrl('You');
+        myAvatar.style.display = 'inline-block';
+        myAvatar.classList.add('active-turn');
+        
+        opponentNameEl.textContent = 'Computer';
+        opponentScoreEl.textContent = '-';
+        opponentAvatar.src = getAvatarUrl('Robot');
+        opponentAvatar.style.display = 'inline-block';
+        
+        landingPage.style.display = 'none';
+        gamePage.style.display = 'block';
+    } else {
+        // Initialize online game - show landing page
+        landingPage.style.display = 'block';
+        gamePage.style.display = 'none';
+    }
 }
 
 // Initialize
 renderDigitGrid();
+initializePage();

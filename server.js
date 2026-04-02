@@ -93,11 +93,12 @@ function startRoundTimer(roomCode) {
     
     clearRoomTimer(roomCode);
     
+    const duration = room.timerDuration || 15;
     room.timer = setTimeout(() => {
         handleTurnTimeout(roomCode);
-    }, 15500); // 15s + 500ms grace period
+    }, duration * 1000 + 500); // duration + 500ms grace period
     
-    io.to(roomCode).emit('timerStarted', { duration: 15 });
+    io.to(roomCode).emit('timerStarted', { duration: duration });
 }
 
 function handleTurnTimeout(roomCode) {
@@ -165,8 +166,9 @@ function finishRound(roomCode, winnerKey) {
 
 io.on('connection', (socket) => {
     // createRoom
-    socket.on('createRoom', ({ username }) => {
+    socket.on('createRoom', ({ username, timerDuration }) => {
         const roomCode = generateRoomCode();
+        const duration = timerDuration && [10, 15, 20].includes(timerDuration) ? timerDuration : 15;
         rooms[roomCode] = {
             roomCode,
             players: [socket.id],
@@ -182,6 +184,7 @@ io.on('connection', (socket) => {
             sockets: { player1: socket.id, player2: null },
             lastActivity: Date.now(),
             timer: null,
+            timerDuration: duration,
             pendingDrawChance: null
         };
         rooms[roomCode].playerNumbers[socket.id] = 1;
